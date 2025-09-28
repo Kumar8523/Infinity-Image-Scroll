@@ -5,42 +5,286 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Infinity Image Scroll</title>
     <style>
-        body { 
-            margin: 0; background: #111;
-         }
-        .gallery { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
-            gap: 5px; 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .gallery img {
-             width: 100%; 
-             height: 150px; 
-             object-fit: cover; 
-             transition: transform 0.3s; 
+
+        body {
+            margin: 0;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #0f0f0f 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            padding: 20px 0;
+        }
+
+        .gallery-item {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: #2a2a2a;
+            aspect-ratio: 4/3;
+        }
+
+        .gallery-item:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .gallery-item:hover img {
+            transform: scale(1.1);
+        }
+
+        .gallery-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1;
+        }
+
+        .gallery-item:hover::before {
+            opacity: 1;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: #888;
+            font-size: 16px;
+            display: none;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #333;
+            border-top: 3px solid #666;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .gallery {
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                gap: 12px;
             }
-        .gallery img:hover { 
-            transform: scale(1.05); 
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .gallery {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                gap: 10px;
+                padding: 15px 0;
+            }
+            
+            .gallery-item:hover {
+                transform: translateY(-4px) scale(1.01);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .gallery {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 8px;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: light) {
+            body {
+                background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            }
+            
+            .gallery-item {
+                background: #fff;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            }
+            
+            .loading {
+                color: #666;
+            }
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            .gallery-item,
+            .gallery-item:hover,
+            .gallery-item img {
+                transition: none;
+                animation: none;
+            }
+            
+            .loading-spinner {
+                animation-duration: 2s;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="gallery"></div>
+    <div class="container">
+        <div class="gallery" id="gallery"></div>
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            Loading more images...
+        </div>
+    </div>
+
     <script>
-        const gallery = document.querySelector('.gallery');
-        async function loadImages() {
-            for(let i = 0; i < 20; i++) {
-                const img = document.createElement('img');
-                img.src = `https://picsum.photos/200/150?random=${i}`;
-                img.alt = 'Random image';
-                gallery.appendChild(img);
+        const gallery = document.getElementById('gallery');
+        const loading = document.getElementById('loading');
+        let imageCount = 0;
+        let isLoading = false;
+
+        // Generate unique image URLs with higher quality
+        function getImageUrl() {
+            const size = Math.random() > 0.5 ? '400/300' : '500/375';
+            return `https://picsum.photos/${size}?random=${imageCount++}&grayscale=${Math.random() > 0.7}`;
+        }
+
+        // Create image element with error handling
+        function createImageElement() {
+            const galleryItem = document.createElement('div');
+            galleryItem.className = 'gallery-item';
+            
+            const img = document.createElement('img');
+            img.loading = 'lazy';
+            img.alt = `Random image ${imageCount}`;
+            img.src = getImageUrl();
+            
+            // Error handling
+            img.onerror = function() {
+                this.src = `https://picsum.photos/400/300?random=${Date.now()}`;
+            };
+            
+            galleryItem.appendChild(img);
+            return galleryItem;
+        }
+
+        // Load batch of images
+        async function loadImages(batchSize = 12) {
+            if (isLoading) return;
+            
+            isLoading = true;
+            loading.classList.add('active');
+            
+            // Simulate network delay for better UX
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            const fragment = document.createDocumentFragment();
+            
+            for (let i = 0; i < batchSize; i++) {
+                const imageElement = createImageElement();
+                fragment.appendChild(imageElement);
+            }
+            
+            gallery.appendChild(fragment);
+            loading.classList.remove('active');
+            isLoading = false;
+        }
+
+        // Check if user has scrolled near bottom
+        function isNearBottom() {
+            const scrollTop = window.scrollY || document.documentElement.scrollTop;
+            const scrollHeight = document.documentElement.scrollHeight;
+            const clientHeight = window.innerHeight;
+            
+            return scrollTop + clientHeight >= scrollHeight - 200;
+        }
+
+        // Throttled scroll handler
+        let scrollTimeout;
+        function handleScroll() {
+            if (scrollTimeout) return;
+            
+            scrollTimeout = setTimeout(() => {
+                if (isNearBottom() && !isLoading) {
+                    loadImages();
+                }
+                scrollTimeout = null;
+            }, 100);
+        }
+
+        // Intersection Observer for more efficient loading
+        let observer;
+        function initObserver() {
+            if ('IntersectionObserver' in window) {
+                observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting && !isLoading) {
+                            loadImages();
+                        }
+                    });
+                }, {
+                    rootMargin: '100px'
+                });
+                
+                observer.observe(loading);
             }
         }
-        loadImages();
-        window.addEventListener('scroll', () => {
-            if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
-                loadImages();
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadImages(16); // Initial load
+            initObserver();
+            
+            // Fallback to scroll event if IntersectionObserver is not supported
+            if (!observer) {
+                window.addEventListener('scroll', handleScroll);
             }
+        });
+
+        // Handle resize events
+        window.addEventListener('resize', () => {
+            // Debounced resize handler
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(handleScroll, 250);
         });
     </script>
 </body>
