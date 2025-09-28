@@ -5,98 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Infinity Image Scroll</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        body { 
+            margin: 0; background: #111;
+         }
+        .gallery { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+            gap: 5px; 
         }
-
-        body {
-            margin: 0;
-            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #0f0f0f 100%);
-            min-height: 100vh;
-            font-family: 'Segoe UI', system-ui, sans-serif;
+        .gallery img {
+             width: 100%; 
+             height: 150px; 
+             object-fit: cover; 
+             transition: transform 0.3s; 
+            }
+        .gallery img:hover { 
+            transform: scale(1.05); 
         }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
+    </style>
+</head>
+<body>
+    <div class="gallery"></div>
+    <script>
+        const gallery = document.querySelector('.gallery');
+        let imageCounter = 0;
+        let loadedImageIds = new Set(); // Track loaded image IDs to prevent duplicates
+        
+        async function loadImages() {
+            for(let i = 0; i < 20; i++) {
+                const img = document.createElement('img');
+                // Use timestamp and counter to ensure unique images
+                const uniqueId = Date.now() + imageCounter;
+                img.src = `https://picsum.photos/200/150?random=${uniqueId}`;
+                img.alt = 'Random image';
+                img.loading = 'lazy'; // Add lazy loading for better performance
+                
+                // Check if this image ID is already loaded
+                if (!loadedImageIds.has(uniqueId)) {
+                    gallery.appendChild(img);
+                    loadedImageIds.add(uniqueId);
+                    imageCounter++;
+                }
+            }
         }
-
-        .gallery {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 15px;
-            padding: 20px 0;
-        }
-
-        .gallery-item {
-            position: relative;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            background: #2a2a2a;
-            aspect-ratio: 4/3;
-        }
-
-        .gallery-item:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-        }
-
-        .gallery-item img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.3s ease;
-        }
-
-        .gallery-item:hover img {
-            transform: scale(1.1);
-        }
-
-        .gallery-item::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 50%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            z-index: 1;
-        }
-
-        .gallery-item:hover::before {
-            opacity: 1;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px 20px;
-            color: #888;
-            font-size: 16px;
-            display: none;
-        }
-
-        .loading.active {
-            display: block;
-        }
-
-        .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #333;
-            border-top: 3px solid #666;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
-
-        @keyframes spin {
+        
+        loadImages();
+        
+        window.addEventListener('scroll', () => {
+            if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
+                loadImages();
+            }
+        });
+    </script>
+</body>
+</html>        @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
@@ -289,3 +251,4 @@
     </script>
 </body>
 </html>
+
